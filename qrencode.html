@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text to QR Code</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    color-scheme: light dark;
+  }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    max-width: 640px;
+    margin: 40px auto;
+    padding: 0 20px;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.2em;
+  }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    font-size: 1rem;
+    padding: 10px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: inherit;
+  }
+  .counter {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-top: 4px;
+    color: #666;
+  }
+  .counter.over {
+    color: #c0392b;
+    font-weight: bold;
+  }
+  button {
+    margin-top: 12px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  #qrcode {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+  }
+  .error {
+    color: #c0392b;
+    margin-top: 10px;
+    font-size: 0.9rem;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Text → QR Code</h1>
+<p class="hint">Type or paste text below, then generate a QR code your phone camera can scan. Input is capped at what a QR code can actually store.</p>
+
+<textarea id="input" placeholder="Enter text here..."></textarea>
+<div class="counter" id="counter">0 / 2953 bytes</div>
+
+<button id="generateBtn">Generate QR Code</button>
+<div class="error" id="error"></div>
+<div id="qrcode"></div>
+
+<script>
+// QR code version 40, error-correction level L (lowest redundancy, highest capacity)
+// holds a maximum of 2953 bytes in byte mode. This is the hard ceiling for
+// what any standard QR code can encode, regardless of library used.
+const MAX_BYTES = 2953;
+
+const input = document.getElementById('input');
+const counter = document.getElementById('counter');
+const generateBtn = document.getElementById('generateBtn');
+const errorEl = document.getElementById('error');
+const qrcodeDiv = document.getElementById('qrcode');
+
+let qr = null;
+
+function byteLength(str) {
+  return new TextEncoder().encode(str).length;
+}
+
+function updateCounter() {
+  const bytes = byteLength(input.value);
+  counter.textContent = `${bytes} / ${MAX_BYTES} bytes`;
+  counter.classList.toggle('over', bytes > MAX_BYTES);
+  generateBtn.disabled = bytes > MAX_BYTES || bytes === 0;
+}
+
+input.addEventListener('input', () => {
+  // Hard-stop typing/pasting past the limit
+  while (byteLength(input.value) > MAX_BYTES) {
+    input.value = input.value.slice(0, -1);
+  }
+  updateCounter();
+});
+
+generateBtn.addEventListener('click', () => {
+  errorEl.textContent = '';
+  qrcodeDiv.innerHTML = '';
+
+  const text = input.value;
+  if (!text) return;
+
+  try {
+    qr = new QRCode(qrcodeDiv, {
+      text: text,
+      width: 320,
+      height: 320,
+      correctLevel: QRCode.CorrectLevel.L
+    });
+  } catch (e) {
+    errorEl.textContent = 'Could not generate QR code: ' + e.message;
+  }
+});
+
+updateCounter();
+</script>
+
+</body>
+</html>
