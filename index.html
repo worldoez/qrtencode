@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Text to QR Code</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<title>Qrtencode — Text to QR Code</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
   :root {
     color-scheme: light dark;
@@ -52,8 +52,14 @@
   }
   #qrcode {
     margin-top: 24px;
-    display: flex;
-    justify-content: center;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #qrcode svg {
+    width: 100%;
+    height: auto;
+    display: block;
   }
   .error {
     color: #c0392b;
@@ -69,7 +75,7 @@
 </head>
 <body>
 
-<h1>Text → QR Code</h1>
+<h1>Qrtencode — Text → QR Code</h1>
 <p class="hint">Type or paste text below, then generate a QR code your phone camera can scan. Input is capped at what a QR code can actually store.</p>
 
 <textarea id="input" placeholder="Enter text here..."></textarea>
@@ -83,6 +89,12 @@
 // QR code version 40, error-correction level L (lowest redundancy, highest capacity)
 // holds a maximum of 2953 bytes in byte mode. This is the hard ceiling for
 // what any standard QR code can encode, regardless of library used.
+//
+// The previous library (qrcodejs 1.0.0) never actually reached version 40 —
+// it threw "code length overflow" on inputs far below this limit. This one
+// (qrcode-generator 1.4.4) supports every version 1-40 and, with its UTF-8
+// byte handler enabled, counts bytes exactly like the counter below. So the
+// counter and the encoder finally agree: if the counter allows it, it works.
 const MAX_BYTES = 2953;
 
 const input = document.getElementById('input');
@@ -90,6 +102,10 @@ const counter = document.getElementById('counter');
 const generateBtn = document.getElementById('generateBtn');
 const errorEl = document.getElementById('error');
 const qrcodeDiv = document.getElementById('qrcode');
+
+// Encode text as real UTF-8 bytes (default is Latin-1-ish and mangles
+// multi-byte characters like Chinese text or emoji).
+qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
 
 let qr = null;
 
@@ -120,12 +136,11 @@ generateBtn.addEventListener('click', () => {
   if (!text) return;
 
   try {
-    qr = new QRCode(qrcodeDiv, {
-      text: text,
-      width: 320,
-      height: 320,
-      correctLevel: QRCode.CorrectLevel.L
-    });
+    // typeNumber 0 = pick the smallest QR version that fits, up to 40
+    qr = qrcode(0, 'L');
+    qr.addData(text, 'Byte');
+    qr.make();
+    qrcodeDiv.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 8, scalable: true });
   } catch (e) {
     errorEl.textContent = 'Could not generate QR code: ' + e.message;
   }
